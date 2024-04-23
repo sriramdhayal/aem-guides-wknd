@@ -1,20 +1,28 @@
-kind: "CDN"
-version: "1"
+kind: CDN
+version: '1'
 metadata:
-  envTypes: ["dev"]
+  envTypes:
+    - dev
 data:
   trafficFilters:
     rules:
-      # Block access to a given path
-      # - name: block-path
-      #   when:
-      #     allOf:
-      #       - reqProperty: tier
-      #         matches: "author|publish"
-      #       - reqProperty: path
-      #         equals: '/block/me'
-      #   action: block
-      # Block access to OFAC countries
+      - name: publish-auth-requests
+        when:
+          allOf:
+            - reqProperty: tier
+              matches: publish
+            - reqProperty: path
+              in:
+                - /system/sling/login/j_security_check
+                - /system/sling/logout
+        action: log
+      - name: block-waf-flags
+        when:
+          reqProperty: path
+          like: "*"
+        action:
+          type: block
+          wafFlags: [SQLI, XSS, BACKDOOR, XML-ERROR, RESPONSESPLIT, SCANNER, PRIVATEFILE, NOUA, TORNODE, NULLBYTE, NO-CONTENT-TYPE, SANS, MALFORMED-DATA, JSON-ERROR, NOTUTF8, DOUBLEENCODING, ABNORMALPATH, CODEINJECTION, BHH, LOG4J-JNDI, USERAGENT, TRAVERSAL]
       - name: block-ofac-countries
         when:
           allOf:
@@ -35,7 +43,6 @@ data:
                 - CU
                 - CI
         action: block
-      # Block client for 5m when it exceeds 100 req/sec on a time window of 1sec
       - name: limit-requests-per-client-ip
         when:
           reqProperty: tier
